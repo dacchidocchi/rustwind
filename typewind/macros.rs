@@ -21,6 +21,16 @@ macro_rules! def_types {
                 )+
             }
 
+            impl $name {
+                pub const fn as_class(&self) -> &'static str {
+                    match self {
+                        $(
+                            Self::$variant => $val,
+                        )+
+                    }
+                }
+            }
+
             impl std::fmt::Display for $name {
                 #[inline]
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
