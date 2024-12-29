@@ -61,16 +61,19 @@ macro_rules! def_types {
             vec![$(stringify!($name).to_string()),*]
         }
 
-        pub(crate) fn to_classes(instances: &[String]) -> Vec<String> {
+        pub(crate) fn to_classes(instances: &[crate::Instance]) -> Vec<String> {
             instances.iter()
-                .filter_map(|expr_str| {
+                .filter_map(|(state, expr_str)| {
                     match expr_str.split_whitespace().next()? {
                         $(
-                            stringify!($name) => syn::parse_str::<$name>(expr_str).ok().map(|expr| expr.to_string()),
+                            stringify!($name) => syn::parse_str::<$name>(expr_str)
+                                .ok()
+                                .map(|expr| {
+                                    let state_str = state.as_ref().map(|s| format!("{}:", s)).unwrap_or_default();
+                                    format!("{}{}", state_str, expr.as_class())
+                                }),
                         )+
-                        _ => {
-                            None
-                        }
+                        _ => None,
                     }
                 })
                 .collect()
@@ -86,8 +89,27 @@ macro_rules! mods {
             [$($mod_name::types()),*].concat()
         }
 
-        fn to_classes(instances: &[String]) -> Vec<String> {
+        fn to_classes(instances: &[crate::Instance]) -> Vec<String> {
             [$($mod_name::to_classes(instances)),*].concat()
         }
     };
 }
+
+macro_rules! def_states {
+    ( $( $state:ident ),* ) => {
+        $(
+            #[macro_export]
+            macro_rules! $state {
+                ( $arg:path ) => {
+                    $crate::const_format::concatcp!(stringify!($state), ":", ($arg).as_class())
+                };
+            }
+        )*
+
+        pub(crate) fn states() -> Vec<String> {
+            vec![$(stringify!($state).to_string()),*]
+        }
+    };
+}
+
+def_states!(hover, focus, active);

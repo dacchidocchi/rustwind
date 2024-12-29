@@ -1,4 +1,5 @@
 use glob::{glob_with, MatchOptions};
+use macros::states;
 use quote::ToTokens;
 use std::{
     collections::HashSet,
@@ -6,7 +7,10 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use syn::{parse::Parser, punctuated::Punctuated, Expr, ExprCall, ExprMacro, Token};
+use syn::{
+    parse::Parser, punctuated::Punctuated, Expr, ExprBlock, ExprCall, ExprMacro, ExprMatch,
+    ExprMethodCall, ExprTuple, Token,
+};
 
 #[macro_use]
 mod macros;
@@ -28,21 +32,35 @@ mods!(
     accessibility
 );
 
+pub use const_format;
+
+// State - Value
+pub(crate) type Instance = (Option<String>, String);
+
 struct Visitor {
-    instances: HashSet<String>,
+    instances: HashSet<Instance>,
+
+    // Like FontFamily, TextColor, TextSize...
     target_types: Vec<String>,
+    // Like Hover, Focust, Active...
+    states: Vec<String>,
 }
 
 impl Visitor {
-    fn new(target_types: Vec<String>) -> Self {
+    fn new(target_types: Vec<String>, states: Vec<String>) -> Self {
         Self {
             instances: HashSet::new(),
             target_types,
+            states,
         }
     }
 
     fn is_target_type(&self, type_str: &str) -> bool {
         self.target_types.iter().any(|t| type_str.contains(t))
+    }
+
+    fn is_state_macro(&self, macro_name: &str) -> bool {
+        self.states.iter().any(|state| macro_name.contains(state))
     }
 
     fn visit_file(&mut self, file_path: &Path) -> syn::Result<()> {
@@ -60,34 +78,63 @@ impl<'ast> syn::visit::Visit<'ast> for Visitor {
         match i {
             Expr::Macro(ExprMacro { mac, .. }) => {
                 let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
-                let args = parser.parse2(mac.tokens.clone()).unwrap_or_default();
-
-                args.iter().for_each(|arg| {
-                    let arg_str = arg.to_token_stream().to_string();
-                    if self.is_target_type(&arg_str) {
-                        self.instances.insert(arg_str);
+                let args = match parser.parse2(mac.tokens.clone()) {
+                    Ok(parsed_args) => parsed_args,
+                    Err(e) => {
+                        eprintln!("Error parsing macro arguments: {}", e);
+                        return;
                     }
-                    self.visit_expr(arg);
+                };
+
+                let macro_name = mac
+                    .path
+                    .get_ident()
+                    .expect("Expected identifier for macro")
+                    .to_string();
+
+                args.iter()
+                    .for_each(|arg| match self.is_state_macro(&macro_name) {
+                        true => {
+                            let arg_string = arg.to_token_stream().to_string();
+                            if self.is_target_type(&arg_string) {
+                                self.instances
+                                    .insert((Some(macro_name.clone()), arg_string));
+                            }
+                        }
+                        false => {
+                            self.visit_expr(arg);
+                        }
+                    });
+            }
+            Expr::Match(ExprMatch { arms, .. }) => {
+                arms.iter().for_each(|arm| {
+                    self.visit_pat(&arm.pat);
+                    self.visit_expr(&arm.body);
                 });
             }
-            Expr::Call(ExprCall { func, args, .. }) => {
-                let func_str = func.to_token_stream().to_string();
-                if self.is_target_type(&func_str) {
-                    self.instances.insert(i.to_token_stream().to_string());
-                }
+            Expr::Block(ExprBlock { block, .. }) => {
+                self.visit_block(block);
+            }
+            Expr::Tuple(ExprTuple { elems, .. }) | Expr::Call(ExprCall { args: elems, .. }) => {
+                elems.iter().for_each(|a| {
+                    self.visit_expr(a);
+                });
+            }
+            Expr::MethodCall(ExprMethodCall { receiver, args, .. }) => {
+                self.visit_expr(receiver);
                 args.iter().for_each(|a| {
                     self.visit_expr(a);
                 });
             }
             Expr::Path(expr_path) => {
-                let path_str = expr_path.to_token_stream().to_string();
-                if self.is_target_type(&path_str) && path_str.contains("::") {
-                    self.instances.insert(i.to_token_stream().to_string());
+                let path_string = expr_path.to_token_stream().to_string();
+                if path_string.contains("::") && self.is_target_type(&path_string) {
+                    self.instances
+                        .insert((None, i.to_token_stream().to_string()));
                 }
             }
             _ => {}
         }
-        syn::visit::visit_expr(self, i);
     }
 }
 
@@ -155,8 +202,7 @@ fn iter_files(patterns: &[&str]) -> Vec<PathBuf> {
 /// }
 /// ```
 pub fn build(output_file: &str, content: &[&str]) -> std::io::Result<()> {
-    let target_types = types();
-    let mut visitor = Visitor::new(target_types);
+    let mut visitor = Visitor::new(types(), states());
 
     iter_files(content).iter().for_each(|file_path| {
         if let Err(e) = visitor.visit_file(file_path) {
