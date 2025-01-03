@@ -5,6 +5,26 @@ class Section:
         self.title = title
         self.categories = categories
 
+    def to_dict(self):
+        return {
+            "title": self.title,
+            "categories": [
+                {
+                    "url": category.url,
+                    "title": category.title,
+                    "description": category.description,
+                    "variants": [
+                        {
+                            "class": variant.class_name,
+                            "properties": variant.properties,
+                        }
+                        for variant in category.variants
+                    ],
+                }
+                for category in self.categories
+            ],
+        }
+
 
 class Category:
     # "https://tailwindcss.com/docs/aspect-ratio",
@@ -20,26 +40,6 @@ class Category:
 
 class Variant:
     # "aspect-auto", "aspect-ratio: auto;"
-    def __init__(self, name, properties):
-        self.name = name
+    def __init__(self, class_name, properties):
+        self.class_name = class_name
         self.properties = properties
-
-
-class Enum:
-    # "Utilities for controlling the aspect ratio of an element.",
-    # "https://tailwindcss.com/docs/aspect-ratio",
-    # "AspectRatio",
-    # [...]
-    def __init__(self, docs, url, name, variants):
-        self.docs = docs
-        self.url = url
-        self.name = name
-        self.variants = variants
-
-
-class EnumVariant:
-    # "Auto", "aspect-auto", "aspect-ratio: auto;"
-    def __init__(self, key, value, docs):
-        self.key = key
-        self.value = value
-        self.docs = docs

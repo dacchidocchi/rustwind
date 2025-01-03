@@ -1,0 +1,23 @@
+[package]
+name = "typewind"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+typewind-macros = { path = "../typewind-macros" }
+const_format = "0.2.34"
+glob = "0.3.1"
+quote = "1.0.37"
+syn = { version = "2.0.90", features = ["full", "visit"] }
+
+[dev-dependencies]
+tempfile = "3.14.0"
+
+[build-dependencies]
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.134"
+convert_case = "0.6.0"
+quote = "1.0.37"
+syn = "2.0.90"
+proc-macro2 = "1.0.92"
+prettyplease = "0.2.25"

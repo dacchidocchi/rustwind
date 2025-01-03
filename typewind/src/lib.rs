@@ -1,5 +1,4 @@
 use glob::{glob_with, MatchOptions};
-use macros::states;
 use quote::ToTokens;
 use std::{
     collections::HashSet,
@@ -12,42 +11,46 @@ use syn::{
     ExprMethodCall, ExprTuple, Token,
 };
 
-#[macro_use]
-mod macros;
-mods!(
-    layout,
-    flexbox_grid,
-    spacing,
-    sizing,
-    typography,
-    backgrounds,
-    borders,
-    effects,
-    filters,
-    tables,
-    transitions_animation,
-    transforms,
-    interactivity,
-    svg,
-    accessibility
-);
-
 pub use const_format;
 
-// State - Value
-pub(crate) type Instance = (Option<String>, String);
+include!(concat!(env!("OUT_DIR"), "/types.rs"));
+include!(concat!(env!("OUT_DIR"), "/utils.rs"));
 
-struct Visitor {
-    instances: HashSet<Instance>,
-
-    // Like FontFamily, TextColor, TextSize...
-    target_types: Vec<String>,
-    // Like Hover, Focust, Active...
-    states: Vec<String>,
+/// Counts the number of tokens in a macro invocation.
+macro_rules! tt_count {
+    () => { 0 };
+    ($head:tt $($tail:tt)*) => { 1 + tt_count!($($tail)*) };
 }
 
-impl Visitor {
-    fn new(target_types: Vec<String>, states: Vec<String>) -> Self {
+macro_rules! def_states {
+    ($($state:ident),*) => {
+        $( #[macro_export]
+        macro_rules! $state {
+            ($arg:path) => {
+                $crate::const_format::concatcp!(stringify!($state), ":", ($arg).as_class())
+            };
+        })*
+
+        fn states() -> [&'static str; tt_count!($($state)*)] {
+            [$(stringify!($state)),*]
+        }
+    };
+}
+
+def_states!(hover, focus, active);
+
+// State - Value
+type Instance = (Option<String>, String);
+
+struct Visitor<const T: usize, const S: usize> {
+    instances: HashSet<Instance>,
+
+    target_types: [&'static str; T],
+    states: [&'static str; S],
+}
+
+impl<const T: usize, const S: usize> Visitor<T, S> {
+    fn new(target_types: [&'static str; T], states: [&'static str; S]) -> Self {
         Self {
             instances: HashSet::new(),
             target_types,
@@ -73,7 +76,7 @@ impl Visitor {
     }
 }
 
-impl<'ast> syn::visit::Visit<'ast> for Visitor {
+impl<'ast, const T: usize, const S: usize> syn::visit::Visit<'ast> for Visitor<T, S> {
     fn visit_expr(&mut self, i: &'ast syn::Expr) {
         match i {
             Expr::Macro(ExprMacro { mac, .. }) => {

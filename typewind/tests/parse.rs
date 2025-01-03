@@ -61,8 +61,8 @@ fn test_font_family_to_class() {
     let result = input
         .into_iter()
         .filter_map(|s| parse_str::<FontFamily>(s).ok())
-        .map(|f| f.to_string())
-        .collect::<Vec<String>>();
+        .map(|f| f.as_class())
+        .collect::<Vec<&str>>();
 
     assert_eq!(result, expected, "FontFamily to class conversion failed");
 }
