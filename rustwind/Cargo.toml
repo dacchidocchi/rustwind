@@ -1,10 +1,10 @@
 [package]
-name = "typewind"
+name = "rustwind"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-typewind-macros = { path = "../typewind-macros" }
+rustwind-macros = { path = "../rustwind-macros" }
 const_format = "0.2.34"
 glob = "0.3.1"
 quote = "1.0.37"

@@ -172,20 +172,20 @@ fn iter_files(patterns: &[&str]) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Generates the final Tailwind classes from the Typewind types.
+/// Generates the final Tailwind classes from the Rustwind types.
 ///
 /// # Arguments
 /// - `output_file` - A string slice that holds the path where the converted Tailwind classes will be saved.
 ///     This file must be linked to `tailwind.config.js` in order for Tailwind to generate the
 ///     necessary styles.
-/// - `content` - A list of string slices containing paths to files that contain typewind types.
+/// - `content` - A list of string slices containing paths to files that contain rustwind types.
 ///     This is similar to the `content` field in Tailwind's configuration, supporting patterns like `./src/**/*.rs`,
 ///     and negated patterns like `!./src/lib.rs` to exclude files from the build.
 ///
 /// # Example
 /// ```no_run
 /// // build.rs
-/// use typewind::build;
+/// use rustwind::build;
 ///
 #[allow(clippy::needless_doctest_main)]
 /// fn main() {

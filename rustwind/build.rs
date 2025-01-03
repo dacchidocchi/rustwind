@@ -78,7 +78,7 @@ impl Section {
 
         quote! {
             pub mod #mod_name {
-                use typewind_macros::{AsClass, Parse};
+                use rustwind_macros::{AsClass, Parse};
 
                 #(#enums)*
             }

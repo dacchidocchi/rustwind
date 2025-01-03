@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["typewind", "typewind-macros"]
+members = ["rustwind", "rustwind-macros"]

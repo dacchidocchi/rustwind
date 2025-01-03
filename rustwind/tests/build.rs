@@ -1,8 +1,8 @@
+use rustwind::build;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{Read, Result, Write};
 use tempfile::NamedTempFile;
-use typewind::build;
 
 fn process_content(content: &str) -> Result<HashSet<String>> {
     let input_temp_file = NamedTempFile::new()?;

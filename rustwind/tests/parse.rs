@@ -1,9 +1,9 @@
+use rustwind::typography::FontFamily;
 use syn::parse_str;
-use typewind::typography::FontFamily;
 
 #[test]
 fn test_font_family_parse_full_path() {
-    let input = "typewind::typography::FontFamily::Mono";
+    let input = "rustwind::typography::FontFamily::Mono";
     let result = parse_str::<FontFamily>(input);
 
     assert!(
