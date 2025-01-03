@@ -163,6 +163,28 @@ fn test_block_expressions() -> Result<()> {
 }
 
 #[test]
+fn test_closure_expressions() -> Result<()> {
+    let content = r#"
+        fn main() {
+            let closure = |a: View, b: View| {
+                div()
+                    .class(tw!(Width::Full, Height::Screen))
+                    .children((a, b))
+            };
+        }
+    "#;
+
+    let classes = process_content(content)?;
+    let expected = ["w-full", "h-screen"]
+        .iter()
+        .map(|&s| s.to_string())
+        .collect();
+
+    assert_eq!(classes, expected);
+    Ok(())
+}
+
+#[test]
 fn test_function_calls() -> Result<()> {
     let content = r#"
         fn some_function(a: View, b: View) -> View {

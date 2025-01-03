@@ -7,8 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use syn::{
-    parse::Parser, punctuated::Punctuated, Expr, ExprBlock, ExprCall, ExprMacro, ExprMatch,
-    ExprMethodCall, ExprTuple, Token,
+    parse::Parser, punctuated::Punctuated, Expr, ExprBlock, ExprCall, ExprClosure, ExprMacro,
+    ExprMatch, ExprMethodCall, ExprTuple, Token,
 };
 
 pub use const_format;
@@ -114,6 +114,9 @@ impl<'ast, const T: usize, const S: usize> syn::visit::Visit<'ast> for Visitor<T
                     self.visit_pat(&arm.pat);
                     self.visit_expr(&arm.body);
                 });
+            }
+            Expr::Closure(ExprClosure { body, .. }) => {
+                self.visit_expr(body);
             }
             Expr::Block(ExprBlock { block, .. }) => {
                 self.visit_block(block);
