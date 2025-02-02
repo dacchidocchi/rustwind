@@ -77,7 +77,7 @@ fn test_macro_expressions() -> Result<()> {
     let content = r#"
         fn main() {
             div().class(format!("{} {}", Display::Flex, FlexDirection::Col));
-            div().class(tw!(Padding::P4, Gap::_4, hover!(BackgroundColor::Gray200)));
+            div().class(tw!(Padding::Number("4"), Gap::Number("4"), hover!(BackgroundColor::Gray200)));
         }
     "#;
 
@@ -99,10 +99,10 @@ fn test_match_expressions() -> Result<()> {
             match layout {
                 true => {
                     div()
-                        .class(tw!(Display::Grid, Gap::_4))
+                        .class(tw!(Display::Grid, Gap::Number("4")))
                         .children(
                             section()
-                                .class(tw!(Padding::P4, BorderRadius::Lg))
+                                .class(tw!(Padding::Number("4"), BorderRadius::Lg))
                         )
                 }
                 false => {
@@ -126,7 +126,7 @@ fn test_match_expressions() -> Result<()> {
 fn test_tuple_expressions() -> Result<()> {
     let content = r#"
         fn main() {
-            let styles = (BorderRadius::Md, Padding::P6);
+            let styles = (BorderRadius::Md, Padding::Number("6"));
             div().class(tw!(styles.0, styles.1));
         }
     "#;
@@ -168,7 +168,7 @@ fn test_closure_expressions() -> Result<()> {
         fn main() {
             let closure = |a: View, b: View| {
                 div()
-                    .class(tw!(Width::Full, Height::Screen))
+                    .class(tw!(Width::WFull, Height::HScreen))
                     .children((a, b))
             };
         }
@@ -193,8 +193,8 @@ fn test_function_calls() -> Result<()> {
 
         fn main() {
             some_function(
-                div().class(Width::Full),
-                span().class(Height::Screen)
+                div().class(Width::WFull),
+                span().class(Height::HScreen)
             );
         }
     "#;
@@ -220,22 +220,21 @@ fn test_complex_nested_expressions() -> Result<()> {
                 Theme::Light => div()
                     .class(tw!(
                         BackgroundColor::White,
-                        TextColor::Gray900
+                        Color::Gray900
                     ))
                     .children((
-                        h1().class(FontSize::_2xl),
-                        p().class(LineHeight::Relaxed)
+                        h1().class(FontSize::_2Xl),
                     )),
                 Theme::Dark => {
                     let base_styles = format!("{} {}", 
                         BackgroundColor::Gray900,
-                        TextColor::White
+                        Color::White
                     );
                     div()
                         .class(base_styles)
                         .children(
                             nav()
-                                .class(tw!(Display::Flex, Gap::_4))
+                                .class(tw!(Display::Flex, Gap::Number("4")))
                         )
                 }
             };
@@ -247,7 +246,6 @@ fn test_complex_nested_expressions() -> Result<()> {
         "bg-white",
         "text-gray-900",
         "text-2xl",
-        "leading-relaxed",
         "bg-gray-900",
         "text-white",
         "flex",

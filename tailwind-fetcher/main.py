@@ -20,16 +20,14 @@ def fetch_sections(selected_section=None):
     soup = BeautifulSoup(request.text, "html.parser")
 
     skip_sections = [
-        "Getting Started",
-        "Core Concepts",
-        "Customization",
-        "Base Styles",
-        "Official Plugins",
+        "Getting started",
+        "Core concepts",
+        "Base styles",
     ]
 
     sections = []
-    for node in soup.select("li.mt-12.lg\\:mt-8"):
-        section_title = node.select_one("h5").get_text()
+    for node in soup.select("div.flex.flex-col.gap-3"):
+        section_title = node.select_one("h3").get_text()
 
         if not selected_section and section_title in skip_sections:
             print(f"Skipping section: {section_title}")
@@ -46,7 +44,7 @@ def fetch_sections(selected_section=None):
 
 def fetch_categories(node):
     categories = []
-    for li in node.select("ul.space-y-6 li"):
+    for li in node.select("ul.flex.flex-col li"):
         anchor = li.select_one("a")
         print(f"Processing category: {anchor.get_text()}")
 
@@ -62,24 +60,19 @@ def fetch_categories(node):
     return categories
 
 
-# FIXME: Layout -> Container, gets the values of the “breakpoint” column as class names
-# since the function does not retrieve the data considering the <table> element to group the data, so
-# for the moment the additional saved data are manually removed from the final JSON.
 def fetch_category(href):
     url = f"{base_url}{href}"
     request = requests.get(url)
     soup = BeautifulSoup(request.text, "html.parser")
 
-    title = soup.select_one("h1.inline-block.text-2xl").get_text()
-    description = soup.select_one("header.relative.z-20 p:nth-child(2)").get_text()
+    title = soup.select_one("h1.mt-2.text-3xl").get_text()
+    description = soup.select_one("p.mt-6.text-base\\/7").get_text()
 
     variants = []
-    for node in soup.select("tbody.align-baseline tr"):
+    for node in soup.select("#quick-reference table tbody tr"):
         variant_entry = Variant(
-            class_name=node.select_one("td:nth-child(1)")
-            .get_text()
-            .replace(" > * + *", ""),
-            properties=node.select_one("td:nth-child(2)").get_text().rstrip("\n"),
+            class_name=node.select_one("td:nth-child(1) code").text,
+            properties=node.select_one("td:nth-child(2) code").text.rstrip("\n"),
         )
         variants.append(variant_entry)
 

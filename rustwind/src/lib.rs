@@ -13,31 +13,10 @@ use syn::{
 
 pub use const_format;
 
+mod states;
+
 include!(concat!(env!("OUT_DIR"), "/types.rs"));
 include!(concat!(env!("OUT_DIR"), "/utils.rs"));
-
-/// Counts the number of tokens in a macro invocation.
-macro_rules! tt_count {
-    () => { 0 };
-    ($head:tt $($tail:tt)*) => { 1 + tt_count!($($tail)*) };
-}
-
-macro_rules! def_states {
-    ($($state:ident),*) => {
-        $( #[macro_export]
-        macro_rules! $state {
-            ($arg:path) => {
-                $crate::const_format::concatcp!(stringify!($state), ":", ($arg).as_class())
-            };
-        })*
-
-        fn states() -> [&'static str; tt_count!($($state)*)] {
-            [$(stringify!($state)),*]
-        }
-    };
-}
-
-def_states!(hover, focus, active);
 
 // State - Value
 type Instance = (Option<String>, String);
@@ -121,10 +100,31 @@ impl<'ast, const T: usize, const S: usize> syn::visit::Visit<'ast> for Visitor<T
             Expr::Block(ExprBlock { block, .. }) => {
                 self.visit_block(block);
             }
-            Expr::Tuple(ExprTuple { elems, .. }) | Expr::Call(ExprCall { args: elems, .. }) => {
+            Expr::Tuple(ExprTuple { elems, .. }) => {
                 elems.iter().for_each(|a| {
                     self.visit_expr(a);
                 });
+            }
+            Expr::Call(ExprCall { func, args, .. }) => {
+                let func_str = func.to_token_stream().to_string();
+
+                match self.is_target_type(&func_str) {
+                    true => {
+                        let args_str = args
+                            .iter()
+                            .map(|arg| arg.to_token_stream().to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+
+                        let full_expr = format!("{}({})", func_str, args_str);
+                        self.instances.insert((None, full_expr));
+                    }
+                    false => {
+                        args.iter().for_each(|a| {
+                            self.visit_expr(a);
+                        });
+                    }
+                };
             }
             Expr::MethodCall(ExprMethodCall { receiver, args, .. }) => {
                 self.visit_expr(receiver);
@@ -151,8 +151,8 @@ fn iter_files(patterns: &[&str]) -> Vec<PathBuf> {
         require_literal_leading_dot: false,
     };
 
-    let mut all_files: HashSet<PathBuf> = HashSet::new();
-    let mut excluded_files: HashSet<PathBuf> = HashSet::new();
+    let mut all_files = HashSet::new();
+    let mut excluded_files = HashSet::new();
 
     patterns.iter().for_each(|pattern| {
         let is_negative = pattern.starts_with('!');
@@ -179,36 +179,26 @@ fn iter_files(patterns: &[&str]) -> Vec<PathBuf> {
 ///
 /// # Arguments
 /// - `output_file` - A string slice that holds the path where the converted Tailwind classes will be saved.
-///     This file must be linked to `tailwind.config.js` in order for Tailwind to generate the
+///     This file must be linked to your css file where you import Tailwind, in order for Tailwind to generate the
 ///     necessary styles.
 /// - `content` - A list of string slices containing paths to files that contain rustwind types.
-///     This is similar to the `content` field in Tailwind's configuration, supporting patterns like `./src/**/*.rs`,
-///     and negated patterns like `!./src/lib.rs` to exclude files from the build.
+///     Supports glob patterns like `./src/**/*.rs` to include multiple files, and negated patterns like
+///     `!./src/lib.rs` to exclude specific files from the build.
 ///
 /// # Example
 /// ```no_run
 /// // build.rs
 /// use rustwind::build;
 ///
-#[allow(clippy::needless_doctest_main)]
-/// fn main() {
-///     build("../target/classes.txt", &["./src/**/*.rs"]).unwrap();
-/// }
+/// build("../target/generated_classes.txt", &["./src/**/*.rs"]).unwrap();
 /// ```
-/// ```js
-/// // tailwind.config.js
-/// module.exports = {
-///     content: [
-///         '../target/classes.txt',
-///     ],
-///     theme: {
-///         extend: {},
-///     },
-///     plugins: [],
-/// }
+/// ```css
+/// /* styles.css */
+/// @import "tailwindcss";
+/// @source "../target/generated_classes.txt";
 /// ```
 pub fn build(output_file: &str, content: &[&str]) -> std::io::Result<()> {
-    let mut visitor = Visitor::new(types(), states());
+    let mut visitor = Visitor::new(crate::utils::types(), crate::states::states());
 
     iter_files(content).iter().for_each(|file_path| {
         if let Err(e) = visitor.visit_file(file_path) {
@@ -217,7 +207,7 @@ pub fn build(output_file: &str, content: &[&str]) -> std::io::Result<()> {
     });
 
     let instances = visitor.instances.into_iter().collect::<Vec<_>>();
-    let classes = to_classes(&instances);
+    let classes = crate::utils::to_classes(&instances);
 
     let mut file = File::create(output_file)?;
     file.write_all(classes.join("\n").as_bytes())?;
