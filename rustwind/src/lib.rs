@@ -13,6 +13,7 @@ use syn::{
 
 pub use const_format;
 
+mod macros;
 mod states;
 
 include!(concat!(env!("OUT_DIR"), "/types.rs"));
